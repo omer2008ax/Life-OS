@@ -16,7 +16,7 @@ interface SettingsCtx extends Settings {
   t: (en: string, he: string) => string;
 }
 
-const defaults: Settings = { language: "en", theme: "dark" };
+const defaults: Settings = { language: "he", theme: "dark" };
 
 const SettingsContext = createContext<SettingsCtx>({
   ...defaults,
@@ -201,7 +201,7 @@ function applyTheme(theme: ThemeName) {
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("en");
+  const [language, setLanguageState] = useState<Language>("he");
   const [theme, setThemeState] = useState<ThemeName>("dark");
   const [loaded, setLoaded] = useState(false);
 
