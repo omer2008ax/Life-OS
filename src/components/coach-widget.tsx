@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useSettings } from "@/lib/settings-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, X, Bot, User, Loader2, Trash2 } from "lucide-react";
+import { Send, X, Bot, User, Loader2, Trash2, CalendarPlus, CheckCircle2 } from "lucide-react";
 
 interface ChatMessage {
   id: string;
@@ -20,6 +20,7 @@ export function CoachWidget() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [scheduleMode, setScheduleMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchMessages = useCallback(async () => {
@@ -53,21 +54,62 @@ export function CoachWidget() {
     const tempId = `temp-${Date.now()}`;
     setMessages((prev) => [
       ...prev,
-      { id: tempId, role: "user", content: userMsg, createdAt: new Date().toISOString() },
+      { id: tempId, role: "user", content: scheduleMode ? `📅 ${userMsg}` : userMsg, createdAt: new Date().toISOString() },
     ]);
 
     try {
-      const res = await fetch("/api/coach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg }),
-      });
-      if (res.ok) {
-        const { reply } = await res.json();
-        setMessages((prev) => [
-          ...prev,
-          { id: `reply-${Date.now()}`, role: "assistant", content: reply, createdAt: new Date().toISOString() },
-        ]);
+      if (scheduleMode) {
+        // Schedule parsing mode
+        const res = await fetch("/api/schedule-parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: userMsg }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.tasks && data.tasks.length > 0) {
+            const taskList = data.tasks
+              .map((tk: { title: string; date: string; startTime: string; duration: number }) =>
+                `✅ ${tk.title} — ${tk.date} ${tk.startTime} (${tk.duration}${t("min", "ד׳")})`
+              )
+              .join("\n");
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `sched-${Date.now()}`,
+                role: "assistant",
+                content: `${t(`Created ${data.count} tasks:`, `נוצרו ${data.count} משימות:`)}\n\n${taskList}`,
+                createdAt: new Date().toISOString(),
+              },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `sched-err-${Date.now()}`,
+                role: "assistant",
+                content: t("Couldn't find tasks in your message. Try something like: 'tomorrow gym at 7, work at 9, study at 8pm'", "לא הצלחתי למצוא משימות בהודעה. נסה משהו כמו: 'מחר חדכ ב7, עבודה ב9, למידה ב8 בערב'"),
+                createdAt: new Date().toISOString(),
+              },
+            ]);
+          }
+        } else {
+          throw new Error("Failed");
+        }
+      } else {
+        // Regular coach mode
+        const res = await fetch("/api/coach", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMsg }),
+        });
+        if (res.ok) {
+          const { reply } = await res.json();
+          setMessages((prev) => [
+            ...prev,
+            { id: `reply-${Date.now()}`, role: "assistant", content: reply, createdAt: new Date().toISOString() },
+          ]);
+        }
       }
     } catch {
       setMessages((prev) => [
@@ -88,11 +130,16 @@ export function CoachWidget() {
     }
   };
 
-  const suggestions = [
-    { en: "I don't feel like working", he: "אין לי חשק לעבוד" },
-    { en: "What should I do next?", he: "מה עלי לעשות עכשיו?" },
-    { en: "How's my day going?", he: "איך עובר עלי היום?" },
-  ];
+  const suggestions = scheduleMode
+    ? [
+        { en: "Tomorrow: gym 7am, work 9-5, study 8pm", he: "מחר: חדכ ב7, עבודה 9-5, למידה ב8 בערב" },
+        { en: "Today meeting at 2, dentist at 4", he: "היום פגישה ב2, רופא שיניים ב4" },
+      ]
+    : [
+        { en: "I don't feel like working", he: "אין לי חשק לעבוד" },
+        { en: "What should I do next?", he: "מה עלי לעשות עכשיו?" },
+        { en: "How's my day going?", he: "איך עובר עלי היום?" },
+      ];
 
   return (
     <>
@@ -198,13 +245,34 @@ export function CoachWidget() {
           </div>
 
           {/* Input */}
-          <div className="px-4 py-3 border-t border-border">
+          <div className="px-4 py-3 border-t border-border space-y-2">
+            {scheduleMode && (
+              <div className="flex items-center gap-1.5 text-[10px] text-primary">
+                <CalendarPlus className="h-3 w-3" />
+                {t("Schedule mode — write your plans and I'll create tasks", "מצב לו״ז — כתוב את התוכניות שלך ואני אצור משימות")}
+              </div>
+            )}
             <div className="flex gap-2">
+              <button
+                onClick={() => setScheduleMode(!scheduleMode)}
+                className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+                  scheduleMode
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                }`}
+                title={t("Toggle schedule mode", "החלף למצב לו״ז")}
+              >
+                <CalendarPlus className="h-4 w-4" />
+              </button>
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-                placeholder={t("Talk to your coach...", "דבר עם המאמן שלך...")}
+                placeholder={
+                  scheduleMode
+                    ? t("Write your schedule...", "כתוב את הלו״ז שלך...")
+                    : t("Talk to your coach...", "דבר עם המאמן שלך...")
+                }
                 disabled={sending}
                 className="flex-1"
               />
