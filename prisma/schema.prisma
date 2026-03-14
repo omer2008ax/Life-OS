@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Task {
+  id            String   @id @default(cuid())
+  title         String
+  description   String   @default("") // notes/description
+  date          String   // YYYY-MM-DD
+  startTime     String   // HH:mm
+  duration      Int      // minutes
+  category      String   // fitness, learning, business, personal
+  priority      String   // high, medium, low
+  status        String   @default("pending") // pending, completed, skipped, postponed
+  tags          String   @default("") // comma-separated tags
+  sortOrder     Int      @default(0)
+  goalId        String?  // optional link to a goal
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subtasks      SubTask[]
+  goal          Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@index([date])
+  @@index([goalId])
+}
+
+model SubTask {
+  id        String   @id @default(cuid())
+  taskId    String
+  title     String
+  completed Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model Habit {
+  id          String   @id @default(cuid())
+  name        String
+  icon        String   @default("target") // lucide icon name
+  color       String   @default("#8b5cf6") // hex color
+  goalId      String?  // optional link to a goal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  completions HabitCompletion[]
+  goal        Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@index([goalId])
+}
+
+model HabitCompletion {
+  id        String   @id @default(cuid())
+  habitId   String
+  date      String   // YYYY-MM-DD
+  createdAt DateTime @default(now())
+
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([habitId])
+  @@index([date])
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  category    String   @default("personal") // health, career, learning, personal, financial
+  targetDate  String?  // optional deadline YYYY-MM-DD
+  status      String   @default("active") // active, completed, abandoned
+  progress    Int      @default(0) // 0-100 manual progress
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tasks       Task[]
+  habits      Habit[]
+  milestones  Milestone[]
+
+  @@index([status])
+}
+
+model Milestone {
+  id        String   @id @default(cuid())
+  goalId    String
+  title     String
+  completed Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+}
+
+model ActivityRule {
+  id          String   @id @default(cuid())
+  appName     String   // e.g. "Fortnite", "VSCode", "YouTube"
+  category    String   // gaming, social, productive, learning, neutral, social_media
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([appName])
+}
+
+model ActivityCache {
+  id          String   @id @default(cuid())
+  date        String   // YYYY-MM-DD
+  appName     String
+  title       String   @default("")
+  duration    Float    // seconds
+  category    String   @default("uncategorized")
+  fetchedAt   DateTime @default(now())
+
+  @@index([date])
+  @@index([date, category])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String   // "user" or "assistant"
+  content   String
+  date      String   // YYYY-MM-DD — messages grouped by day
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+model DailyReview {
+  id              String   @id @default(cuid())
+  date            String   @unique // YYYY-MM-DD
+  mood            Int      // 1-5
+  energyLevel     Int      // 1-5
+  productivityScore Int    // 1-5 (self-rated)
+  wins            String   @default("") // what went well
+  struggles       String   @default("") // what was hard
+  tomorrowFocus   String   @default("") // main goal for tomorrow
+  gratitude       String   @default("") // grateful for
+  notes           String   @default("") // free-form notes
+  // Auto-collected stats at review time
+  tasksCompleted  Int      @default(0)
+  tasksTotal      Int      @default(0)
+  habitsCompleted Int      @default(0)
+  habitsTotal     Int      @default(0)
+  screenMinutes   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([date])
+}
+
+model UserSettings {
+  id              String @id @default("singleton")
+  screenTimeGoal  Int    @default(480) // daily goal in minutes (default 8h)
+}
