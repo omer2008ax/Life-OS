@@ -30,9 +30,9 @@ interface Notification {
 }
 
 const SEVERITY_STYLES = {
-  info: "bg-blue-500/15 border-blue-500/30 text-blue-200",
-  warning: "bg-yellow-500/15 border-yellow-500/30 text-yellow-200",
-  critical: "bg-red-500/15 border-red-500/30 text-red-200",
+  info: "bg-blue-600 border-blue-700 text-white",
+  warning: "bg-amber-500 border-amber-600 text-white",
+  critical: "bg-red-600 border-red-700 text-white",
 };
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
