@@ -31,21 +31,44 @@ export function AddTaskDialog({ onAdd, defaultDate }: AddTaskDialogProps) {
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
   const [showMore, setShowMore] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5]); // Mon-Fri
+  const [dayOfMonth, setDayOfMonth] = useState(1);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    await onAdd({
-      title: title.trim(),
-      date: defaultDate,
-      startTime,
-      duration: Number(duration),
-      category,
-      priority,
-      description: description.trim() || undefined,
-      tags: tags.trim() || undefined,
-    });
+    if (isRecurring) {
+      await fetch("/api/recurring", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          startTime,
+          duration: Number(duration),
+          category,
+          priority,
+          tags: tags.trim(),
+          frequency,
+          daysOfWeek: frequency === "weekly" ? daysOfWeek.join(",") : "",
+          dayOfMonth: frequency === "monthly" ? dayOfMonth : null,
+        }),
+      });
+    } else {
+      await onAdd({
+        title: title.trim(),
+        date: defaultDate,
+        startTime,
+        duration: Number(duration),
+        category,
+        priority,
+        description: description.trim() || undefined,
+        tags: tags.trim() || undefined,
+      });
+    }
 
     setTitle("");
     setStartTime("09:00");
@@ -55,6 +78,7 @@ export function AddTaskDialog({ onAdd, defaultDate }: AddTaskDialogProps) {
     setDescription("");
     setTags("");
     setShowMore(false);
+    setIsRecurring(false);
     setOpen(false);
   };
 
@@ -151,6 +175,90 @@ export function AddTaskDialog({ onAdd, defaultDate }: AddTaskDialogProps) {
 
           {showMore && (
             <div className="space-y-4">
+              {/* Recurring toggle */}
+              <div className="flex items-center justify-between">
+                <Label>{t("Recurring Task", "משימה חוזרת")}</Label>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isRecurring}
+                  onClick={() => setIsRecurring(!isRecurring)}
+                  className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    isRecurring ? "bg-primary" : "bg-muted"
+                  }`}
+                >
+                  <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
+                    isRecurring ? "translate-x-4" : "translate-x-0"
+                  }`} />
+                </button>
+              </div>
+
+              {isRecurring && (
+                <div className="space-y-3 p-3 rounded-lg bg-muted/30 border border-border">
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t("Frequency", "תדירות")}</Label>
+                    <select
+                      value={frequency}
+                      onChange={(e) => setFrequency(e.target.value as typeof frequency)}
+                      className="flex h-8 w-full items-center rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                    >
+                      <option value="daily">{t("Daily", "יומי")}</option>
+                      <option value="weekly">{t("Weekly", "שבועי")}</option>
+                      <option value="monthly">{t("Monthly", "חודשי")}</option>
+                    </select>
+                  </div>
+
+                  {frequency === "weekly" && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("Days", "ימים")}</Label>
+                      <div className="flex gap-1">
+                        {[
+                          { val: 0, label: t("S", "א") },
+                          { val: 1, label: t("M", "ב") },
+                          { val: 2, label: t("T", "ג") },
+                          { val: 3, label: t("W", "ד") },
+                          { val: 4, label: t("T", "ה") },
+                          { val: 5, label: t("F", "ו") },
+                          { val: 6, label: t("S", "ש") },
+                        ].map(({ val, label }) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() =>
+                              setDaysOfWeek((prev) =>
+                                prev.includes(val)
+                                  ? prev.filter((d) => d !== val)
+                                  : [...prev, val]
+                              )
+                            }
+                            className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                              daysOfWeek.includes(val)
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {frequency === "monthly" && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("Day of month", "יום בחודש")}</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={dayOfMonth}
+                        onChange={(e) => setDayOfMonth(Number(e.target.value))}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="description">{t("Notes", "הערות")}</Label>
                 <textarea

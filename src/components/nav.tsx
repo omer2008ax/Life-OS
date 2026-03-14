@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Calendar, Flame, Monitor, Flag, Sparkles, Settings } from "lucide-react";
+import { LayoutDashboard, Calendar, Flame, Monitor, Flag, Sparkles, Settings, BarChart3 } from "lucide-react";
 import { useSettings } from "@/lib/settings-context";
 
 export function Nav() {
@@ -15,6 +15,7 @@ export function Nav() {
     { href: "/habits", label: t("Habits", "הרגלים"), icon: Flame },
     { href: "/reality", label: t("Reality", "מציאות"), icon: Monitor },
     { href: "/goals", label: t("Goals", "יעדים"), icon: Flag },
+    { href: "/analytics", label: t("Analytics", "אנליטיקה"), icon: BarChart3 },
     { href: "/review", label: t("Review", "סיכום"), icon: Sparkles },
     { href: "/settings", label: t("Settings", "הגדרות"), icon: Settings },
   ];

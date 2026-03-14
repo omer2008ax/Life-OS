@@ -12,9 +12,15 @@ import {
   format,
   addDays,
   subDays,
+  addMonths,
+  subMonths,
   startOfWeek,
+  startOfMonth,
+  endOfMonth,
+  getDay,
   isToday as isTodayFn,
   isSameDay,
+  isSameMonth,
 } from "date-fns";
 import {
   ChevronLeft,
@@ -22,6 +28,7 @@ import {
   List,
   Clock,
   CalendarDays,
+  Grid3X3,
 } from "lucide-react";
 import {
   DndContext,
@@ -38,7 +45,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
-type ViewMode = "list" | "timeline" | "week";
+type ViewMode = "list" | "timeline" | "week" | "month";
 
 const HOUR_HEIGHT = 80;
 const TIMELINE_START_HOUR = 6;
@@ -138,6 +145,40 @@ function useWeekTasks(weekStart: Date) {
   return { weekTasks, weekLoading };
 }
 
+// ─── Month Tasks Hook ───
+function useMonthTasks(date: Date) {
+  const [monthTasks, setMonthTasks] = useState<Task[]>([]);
+  const [monthLoading, setMonthLoading] = useState(true);
+
+  const monthStart = startOfMonth(date);
+  const monthEnd = endOfMonth(date);
+  // Extend to full weeks
+  const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const calEnd = addDays(startOfWeek(addDays(monthEnd, 6), { weekStartsOn: 0 }), -1);
+
+  const startStr = format(calStart, "yyyy-MM-dd");
+  const endStr = format(calEnd, "yyyy-MM-dd");
+
+  const fetchMonthTasks = useCallback(async () => {
+    try {
+      setMonthLoading(true);
+      const res = await fetch(`/api/tasks?start=${startStr}&end=${endStr}`);
+      if (!res.ok) throw new Error("Failed");
+      setMonthTasks(await res.json());
+    } catch {
+      setMonthTasks([]);
+    } finally {
+      setMonthLoading(false);
+    }
+  }, [startStr, endStr]);
+
+  useEffect(() => {
+    fetchMonthTasks();
+  }, [fetchMonthTasks]);
+
+  return { monthTasks, monthLoading, calStart, calEnd };
+}
+
 // ─── Now Indicator Hook ───
 function useNowMinutes() {
   const [now, setNow] = useState(new Date());
@@ -169,6 +210,7 @@ export default function SchedulePage() {
     [dateStr]
   );
   const { weekTasks, weekLoading } = useWeekTasks(weekStart);
+  const { monthTasks, monthLoading, calStart } = useMonthTasks(date);
   const nowMinutes = useNowMinutes();
 
   const sensors = useSensors(
@@ -199,6 +241,7 @@ export default function SchedulePage() {
     { key: "list", label: t("List", "רשימה"), icon: List },
     { key: "timeline", label: t("Timeline", "ציר זמן"), icon: Clock },
     { key: "week", label: t("Week", "שבוע"), icon: CalendarDays },
+    { key: "month", label: t("Month", "חודש"), icon: Grid3X3 },
   ];
 
   return (
@@ -209,7 +252,7 @@ export default function SchedulePage() {
           variant="ghost"
           size="icon"
           onClick={() =>
-            setDate((d) => (view === "week" ? subDays(d, 7) : subDays(d, 1)))
+            setDate((d) => view === "month" ? subMonths(d, 1) : view === "week" ? subDays(d, 7) : subDays(d, 1))
           }
         >
           <ChevronLeft className="h-5 w-5" />
@@ -219,14 +262,18 @@ export default function SchedulePage() {
             onClick={() => setDate(new Date())}
             className="text-lg font-semibold hover:text-primary transition-colors"
           >
-            {view === "week"
+            {view === "month"
+              ? format(date, "MMMM yyyy")
+              : view === "week"
               ? `${format(weekStart, "MMM d")} - ${format(addDays(weekStart, 6), "MMM d")}`
               : isToday
                 ? t("Today", "היום")
                 : format(date, "EEEE")}
           </button>
           <p className="text-xs text-muted-foreground">
-            {view === "week"
+            {view === "month"
+              ? ""
+              : view === "week"
               ? format(weekStart, "yyyy")
               : format(date, "MMMM d, yyyy")}
           </p>
@@ -235,7 +282,7 @@ export default function SchedulePage() {
           variant="ghost"
           size="icon"
           onClick={() =>
-            setDate((d) => (view === "week" ? addDays(d, 7) : addDays(d, 1)))
+            setDate((d) => view === "month" ? addMonths(d, 1) : view === "week" ? addDays(d, 7) : addDays(d, 1))
           }
         >
           <ChevronRight className="h-5 w-5" />
@@ -260,8 +307,8 @@ export default function SchedulePage() {
         ))}
       </div>
 
-      {/* Add Task (not in week view) */}
-      {view !== "week" && (
+      {/* Add Task (not in week/month view) */}
+      {view !== "week" && view !== "month" && (
         <div className="flex justify-end">
           <AddTaskDialog onAdd={createTask} defaultDate={dateStr} />
         </div>
@@ -331,6 +378,20 @@ export default function SchedulePage() {
           weekTasks={weekTasks}
           weekLoading={weekLoading}
           date={date}
+          onSelectDay={(d) => {
+            setDate(d);
+            setView("list");
+          }}
+        />
+      )}
+
+      {/* ═══ MONTH VIEW ═══ */}
+      {view === "month" && (
+        <MonthView
+          date={date}
+          monthTasks={monthTasks}
+          monthLoading={monthLoading}
+          calStart={calStart}
           onSelectDay={(d) => {
             setDate(d);
             setView("list");
@@ -621,6 +682,135 @@ function WeekView({
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// MONTH VIEW COMPONENT
+// ─────────────────────────────────────────────
+function MonthView({
+  date,
+  monthTasks,
+  monthLoading,
+  calStart,
+  onSelectDay,
+}: {
+  date: Date;
+  monthTasks: Task[];
+  monthLoading: boolean;
+  calStart: Date;
+  onSelectDay: (d: Date) => void;
+}) {
+  const { t } = useSettings();
+
+  const dayHeaders = [
+    t("Sun", "א׳"),
+    t("Mon", "ב׳"),
+    t("Tue", "ג׳"),
+    t("Wed", "ד׳"),
+    t("Thu", "ה׳"),
+    t("Fri", "ו׳"),
+    t("Sat", "ש׳"),
+  ];
+
+  if (monthLoading) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        {t("Loading...", "טוען...")}
+      </div>
+    );
+  }
+
+  // Build 6 weeks of days
+  const weeks: Date[][] = [];
+  let current = calStart;
+  for (let w = 0; w < 6; w++) {
+    const week: Date[] = [];
+    for (let d = 0; d < 7; d++) {
+      week.push(current);
+      current = addDays(current, 1);
+    }
+    weeks.push(week);
+  }
+
+  // Remove last week if it's entirely next month
+  if (weeks.length > 0 && !weeks[weeks.length - 1].some((d) => isSameMonth(d, date))) {
+    weeks.pop();
+  }
+
+  return (
+    <div>
+      {/* Day headers */}
+      <div className="grid grid-cols-7 mb-1">
+        {dayHeaders.map((d) => (
+          <div key={d} className="text-center text-[10px] text-muted-foreground font-medium py-1">
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {weeks.flat().map((day) => {
+          const dayStr = format(day, "yyyy-MM-dd");
+          const dayTasks = monthTasks.filter((tk) => tk.date === dayStr);
+          const total = dayTasks.length;
+          const completed = dayTasks.filter((tk) => tk.status === "completed").length;
+          const today = isTodayFn(day);
+          const inMonth = isSameMonth(day, date);
+
+          // Color logic
+          let statusColor = "bg-transparent";
+          if (total > 0) {
+            const rate = completed / total;
+            if (rate === 1) statusColor = "bg-green-500";
+            else if (rate >= 0.5) statusColor = "bg-yellow-500";
+            else if (rate > 0) statusColor = "bg-orange-500";
+            else statusColor = "bg-red-500";
+          }
+
+          return (
+            <button
+              key={dayStr}
+              onClick={() => onSelectDay(day)}
+              className={`relative flex flex-col items-center py-2 rounded-lg transition-all hover:bg-muted/50 ${
+                !inMonth ? "opacity-30" : ""
+              } ${today ? "ring-2 ring-primary" : ""}`}
+            >
+              <span
+                className={`text-sm font-medium ${
+                  today ? "text-primary" : ""
+                }`}
+              >
+                {format(day, "d")}
+              </span>
+              {total > 0 && (
+                <>
+                  <div className={`w-2 h-2 rounded-full mt-1 ${statusColor}`} />
+                  <span className="text-[9px] text-muted-foreground mt-0.5">
+                    {completed}/{total}
+                  </span>
+                </>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-3 mt-3">
+        {[
+          { color: "bg-green-500", label: t("All done", "הכל בוצע") },
+          { color: "bg-yellow-500", label: t("Partial", "חלקי") },
+          { color: "bg-red-500", label: t("None done", "לא בוצע") },
+        ].map(({ color, label }) => (
+          <span key={label} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className={`w-2 h-2 rounded-full ${color}`} />
+            {label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

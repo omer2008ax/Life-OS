@@ -22,12 +22,25 @@ import {
   HardDrive,
   Bell,
   BellOff,
+  Repeat,
+  Trash2,
 } from "lucide-react";
 
 interface Backup {
   name: string;
   size: number;
   created: string;
+}
+
+interface RecurringTask {
+  id: string;
+  title: string;
+  frequency: string;
+  daysOfWeek: string;
+  dayOfMonth: number | null;
+  active: boolean;
+  startTime: string;
+  category: string;
 }
 
 export default function SettingsPage() {
@@ -38,9 +51,11 @@ export default function SettingsPage() {
   const [showBackups, setShowBackups] = useState(false);
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>(getNotificationSettings);
   const [browserPermission, setBrowserPermission] = useState<NotificationPermission | "unsupported">("default");
+  const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
 
   useEffect(() => {
     setBrowserPermission(getBrowserNotificationPermission());
+    fetch("/api/recurring").then((r) => r.json()).then(setRecurringTasks).catch(() => {});
   }, []);
 
   const updateNotifSetting = <K extends keyof NotificationSettings>(key: K, value: NotificationSettings[K]) => {
@@ -318,6 +333,84 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
               <BellOff className="h-3.5 w-3.5" />
               {t("All notifications are disabled", "כל ההתראות מושבתות")}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recurring Tasks */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+            <Repeat className="h-4 w-4" />
+            {t("Recurring Tasks", "משימות חוזרות")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recurringTasks.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {t("No recurring tasks. Create one from the Add Task dialog.", "אין משימות חוזרות. צור אחת מהדיאלוג הוספת משימה.")}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {recurringTasks.map((rt) => {
+                const freqLabel =
+                  rt.frequency === "daily" ? t("Daily", "יומי") :
+                  rt.frequency === "weekly" ? t("Weekly", "שבועי") :
+                  t("Monthly", "חודשי");
+                const dayNames = [t("Sun","א׳"),t("Mon","ב׳"),t("Tue","ג׳"),t("Wed","ד׳"),t("Thu","ה׳"),t("Fri","ו׳"),t("Sat","ש׳")];
+                const detail = rt.frequency === "weekly" && rt.daysOfWeek
+                  ? rt.daysOfWeek.split(",").map((d) => dayNames[Number(d)]).join(", ")
+                  : rt.frequency === "monthly" && rt.dayOfMonth
+                  ? `${t("Day", "יום")} ${rt.dayOfMonth}`
+                  : "";
+
+                return (
+                  <div
+                    key={rt.id}
+                    className={`flex items-center justify-between p-2 rounded-lg border ${
+                      rt.active ? "border-border" : "border-border/50 opacity-50"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{rt.title}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {freqLabel}{detail ? ` · ${detail}` : ""} · {rt.startTime}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={async () => {
+                          await fetch(`/api/recurring/${rt.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ active: !rt.active }),
+                          });
+                          setRecurringTasks((prev) =>
+                            prev.map((r) => r.id === rt.id ? { ...r, active: !r.active } : r)
+                          );
+                        }}
+                        className={`relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                          rt.active ? "bg-primary" : "bg-muted"
+                        }`}
+                      >
+                        <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow transition ${
+                          rt.active ? "translate-x-3" : "translate-x-0"
+                        }`} />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          await fetch(`/api/recurring/${rt.id}`, { method: "DELETE" });
+                          setRecurringTasks((prev) => prev.filter((r) => r.id !== rt.id));
+                        }}
+                        className="text-muted-foreground hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

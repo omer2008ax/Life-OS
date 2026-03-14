@@ -10,6 +10,12 @@ export function useTasks(date: Date) {
   const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
+      // Generate recurring tasks for this date first
+      await fetch("/api/recurring/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: dateStr }),
+      }).catch(() => {});
       const res = await fetch(`/api/tasks?date=${dateStr}`);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
