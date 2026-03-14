@@ -22,14 +22,14 @@ export function Nav() {
 
   return (
     <nav className="sticky bottom-0 border-t border-border bg-background/80 backdrop-blur-lg">
-      <div className="container mx-auto max-w-2xl flex justify-around py-2">
+      <div className="container mx-auto max-w-2xl flex overflow-x-auto no-scrollbar justify-around py-2">
         {links.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] transition-colors ${
+              className={`flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] min-w-[3rem] flex-shrink-0 transition-colors ${
                 active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
