@@ -23,6 +23,7 @@ export interface Task {
   tags: string;
   sortOrder: number;
   goalId: string | null;
+  recurringTaskId: string | null;
   createdAt: string;
   updatedAt: string;
   subtasks: SubTask[];

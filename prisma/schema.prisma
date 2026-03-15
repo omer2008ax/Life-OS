@@ -18,16 +18,18 @@ model Task {
   priority      String   // high, medium, low
   status        String   @default("pending") // pending, completed, skipped, postponed
   tags          String   @default("") // comma-separated tags
-  sortOrder     Int      @default(0)
-  goalId        String?  // optional link to a goal
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  sortOrder       Int      @default(0)
+  goalId          String?  // optional link to a goal
+  recurringTaskId String?  // link to recurring rule
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   subtasks      SubTask[]
   goal          Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
 
   @@index([date])
   @@index([goalId])
+  @@index([recurringTaskId])
 }
 
 model SubTask {

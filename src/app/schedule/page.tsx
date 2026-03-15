@@ -349,7 +349,7 @@ export default function SchedulePage() {
                       onStatusChange={(status) =>
                         updateTask(task.id, { status })
                       }
-                      onDelete={() => deleteTask(task.id)}
+                      onDelete={(deleteSeries) => deleteTask(task.id, deleteSeries)}
                       onCopyToDate={copyTaskToDate}
                     />
                   ))}

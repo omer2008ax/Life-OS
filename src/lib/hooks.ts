@@ -58,9 +58,10 @@ export function useTasks(date: Date) {
     }
   };
 
-  const deleteTask = async (id: string) => {
+  const deleteTask = async (id: string, deleteSeries?: boolean) => {
     try {
-      const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+      const url = deleteSeries ? `/api/tasks/${id}?series=true` : `/api/tasks/${id}`;
+      const res = await fetch(url, { method: "DELETE" });
       if (res.ok) await fetchTasks();
     } catch (e) {
       console.error("Failed to delete task:", e);

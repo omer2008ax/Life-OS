@@ -47,6 +47,7 @@ export async function POST(req: Request) {
         category: rule.category,
         priority: rule.priority,
         tags: rule.tags,
+        recurringTaskId: rule.id,
       },
     });
     created.push(task);

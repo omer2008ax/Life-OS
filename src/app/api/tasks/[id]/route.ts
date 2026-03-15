@@ -18,12 +18,23 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { searchParams } = new URL(request.url);
+  const deleteSeries = searchParams.get("series") === "true";
 
-  await prisma.task.delete({ where: { id } });
+  const task = await prisma.task.findUnique({ where: { id } });
+  if (!task) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  if (deleteSeries && task.recurringTaskId) {
+    // Delete the recurring rule + all generated tasks
+    await prisma.task.deleteMany({ where: { recurringTaskId: task.recurringTaskId } });
+    await prisma.recurringTask.delete({ where: { id: task.recurringTaskId } }).catch(() => {});
+  } else {
+    await prisma.task.delete({ where: { id } });
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -46,7 +46,7 @@ const priorityIndicator: Record<string, string> = {
 interface TaskCardProps {
   task: Task;
   onStatusChange: (status: TaskStatus) => void;
-  onDelete: () => void;
+  onDelete: (deleteSeries?: boolean) => void;
   onCopyToDate?: (task: Task, date: string) => Promise<boolean>;
   onTaskUpdated?: () => void;
 }
@@ -71,6 +71,7 @@ export function TaskCard({ task, onStatusChange, onDelete, onCopyToDate, onTaskU
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [localSubtasks, setLocalSubtasks] = useState<SubTask[]>(task.subtasks ?? []);
   const [addingSubtask, setAddingSubtask] = useState(false);
+  const [showDeleteChoice, setShowDeleteChoice] = useState(false);
 
   const {
     attributes,
@@ -313,7 +314,13 @@ export function TaskCard({ task, onStatusChange, onDelete, onCopyToDate, onTaskU
             variant="ghost"
             size="icon"
             className="h-7 w-7 text-muted-foreground hover:text-destructive"
-            onClick={onDelete}
+            onClick={() => {
+              if (task.recurringTaskId) {
+                setShowDeleteChoice(true);
+              } else {
+                onDelete();
+              }
+            }}
             title={t("Delete", "מחק")}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -352,6 +359,27 @@ export function TaskCard({ task, onStatusChange, onDelete, onCopyToDate, onTaskU
                 if (e.target.value) handleCopy(e.target.value);
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Delete recurring choice */}
+      {showDeleteChoice && (
+        <div className="px-3 pb-3 pt-0">
+          <p className="text-xs text-muted-foreground mb-2">{t("This is a recurring task:", "זו משימה חוזרת:")}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowDeleteChoice(false); onDelete(false); }}
+              className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/60 text-muted-foreground hover:bg-muted transition-colors"
+            >
+              {t("Only this one", "רק את הזאת")}
+            </button>
+            <button
+              onClick={() => { setShowDeleteChoice(false); onDelete(true); }}
+              className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-colors"
+            >
+              {t("Entire series", "כל הסדרה")}
+            </button>
           </div>
         </div>
       )}
