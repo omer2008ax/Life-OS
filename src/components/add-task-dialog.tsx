@@ -12,8 +12,34 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, X } from "lucide-react";
 import { Category, Priority, CreateTaskInput } from "@/types";
+
+// Quick-fill presets sorted alphabetically in Hebrew
+const PRESETS: { label: string; category: Category; duration: number; time?: string }[] = [
+  { label: "אזכרה", category: "personal", duration: 120 },
+  { label: "איסוף משלוח", category: "personal", duration: 30 },
+  { label: "אימון", category: "fitness", duration: 60 },
+  { label: "בר מצווה", category: "personal", duration: 180 },
+  { label: "בת מצווה", category: "personal", duration: 180 },
+  { label: "ברית", category: "personal", duration: 120 },
+  { label: "דדליין", category: "business", duration: 60 },
+  { label: "הגשת עבודה", category: "learning", duration: 30 },
+  { label: "הפסקת צהריים", category: "personal", duration: 60, time: "12:00" },
+  { label: "חג", category: "personal", duration: 480 },
+  { label: "חדר כושר", category: "fitness", duration: 90 },
+  { label: "חתונה", category: "personal", duration: 240 },
+  { label: "טיול", category: "personal", duration: 480 },
+  { label: "טיסה", category: "personal", duration: 180 },
+  { label: "יום הולדת", category: "personal", duration: 180 },
+  { label: "ישיבה", category: "business", duration: 60 },
+  { label: "משמרת", category: "business", duration: 480 },
+  { label: "עבודה", category: "business", duration: 480, time: "09:00" },
+  { label: "קורס", category: "learning", duration: 90 },
+  { label: "שעת קימה", category: "personal", duration: 15, time: "07:00" },
+  { label: "שעת שינה", category: "personal", duration: 15, time: "23:00" },
+  { label: "תיקון", category: "personal", duration: 60 },
+];
 
 interface AddTaskDialogProps {
   onAdd: (input: CreateTaskInput) => Promise<void>;
@@ -95,6 +121,32 @@ export function AddTaskDialog({ onAdd, defaultDate }: AddTaskDialogProps) {
           <DialogTitle>{t("New Task", "משימה חדשה")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Quick-fill presets */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">{t("Quick fill", "מילוי מהיר")}</Label>
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+              {PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    setTitle(preset.label);
+                    setCategory(preset.category);
+                    setDuration(String(preset.duration));
+                    if (preset.time) setStartTime(preset.time);
+                  }}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    title === preset.label
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="title">{t("Title", "כותרת")}</Label>
             <Input
