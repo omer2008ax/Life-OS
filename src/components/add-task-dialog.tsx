@@ -17,8 +17,7 @@ import { Category, Priority, CreateTaskInput } from "@/types";
 
 // Quick-fill presets sorted alphabetically in Hebrew
 const PRESETS: { label: string; category: Category; duration: number; time?: string }[] = [
-  { label: "אזכרה", category: "personal", duration: 120 },
-  { label: "איסוף משלוח", category: "personal", duration: 30 },
+{ label: "איסוף משלוח", category: "personal", duration: 30 },
   { label: "אימון", category: "fitness", duration: 60 },
   { label: "בר מצווה", category: "personal", duration: 180 },
   { label: "בת מצווה", category: "personal", duration: 180 },
