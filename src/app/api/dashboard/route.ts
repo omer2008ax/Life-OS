@@ -86,9 +86,11 @@ export async function GET() {
     completedToday: h.completions.length > 0,
   }));
 
-  // Screen time from cache (sum all durations for today)
+  // Screen time: prefer ActivityWatch cache, fallback to manual entry from review
   const screenSeconds = activityCache.reduce((sum, e) => sum + e.duration, 0);
-  const screenMinutes = Math.round(screenSeconds / 60);
+  const screenMinutes = screenSeconds > 0
+    ? Math.round(screenSeconds / 60)
+    : (todayReviewData?.screenMinutes || 0);
 
   // Review
   const review = todayReviewData
@@ -157,16 +159,22 @@ export async function GET() {
       ? Math.round(last7Reviews.reduce((sum, r) => sum + r.tasksCompleted, 0) / last7Reviews.length)
       : 0;
 
-  // Screen time average from last 7 days cache
+  // Screen time average: prefer cache, fallback to review data
   const screenByDay = new Map<string, number>();
   for (const entry of last7DaysCache) {
     screenByDay.set(entry.date, (screenByDay.get(entry.date) || 0) + entry.duration);
   }
-  const dayScreenValues = [...screenByDay.values()];
-  const avgScreenMinutes =
-    dayScreenValues.length > 0
-      ? Math.round(dayScreenValues.reduce((a, b) => a + b, 0) / dayScreenValues.length / 60)
-      : 0;
+  let avgScreenMinutes = 0;
+  if (screenByDay.size > 0) {
+    const dayScreenValues = [...screenByDay.values()];
+    avgScreenMinutes = Math.round(dayScreenValues.reduce((a, b) => a + b, 0) / dayScreenValues.length / 60);
+  } else {
+    // Fallback to review screenMinutes
+    const reviewsWithScreen = last7Reviews.filter((r) => r.screenMinutes > 0);
+    if (reviewsWithScreen.length > 0) {
+      avgScreenMinutes = Math.round(reviewsWithScreen.reduce((sum, r) => sum + r.screenMinutes, 0) / reviewsWithScreen.length);
+    }
+  }
 
   // Inspirational quote (deterministic per day so it stays stable)
   const dayOfYear = Math.floor(
