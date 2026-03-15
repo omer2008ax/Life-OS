@@ -87,6 +87,8 @@ export default function ReviewPage() {
   const [tomorrowFocus, setTomorrowFocus] = useState("");
   const [gratitude, setGratitude] = useState("");
   const [notes, setNotes] = useState("");
+  const [screenHours, setScreenHours] = useState(0);
+  const [screenMins, setScreenMins] = useState(0);
 
   const dateStr = format(date, "yyyy-MM-dd");
   const isToday = dateStr === format(new Date(), "yyyy-MM-dd");
@@ -112,6 +114,10 @@ export default function ReviewPage() {
           setTomorrowFocus(data.review.tomorrowFocus);
           setGratitude(data.review.gratitude);
           setNotes(data.review.notes);
+          if (data.review.screenMinutes > 0) {
+            setScreenHours(Math.floor(data.review.screenMinutes / 60));
+            setScreenMins(data.review.screenMinutes % 60);
+          }
         } else {
           setReview(null);
           setMood(3);
@@ -122,6 +128,8 @@ export default function ReviewPage() {
           setTomorrowFocus("");
           setGratitude("");
           setNotes("");
+          setScreenHours(0);
+          setScreenMins(0);
         }
       }
     } catch (e) {
@@ -177,6 +185,7 @@ export default function ReviewPage() {
           tomorrowFocus,
           gratitude,
           notes,
+          screenMinutes: screenHours * 60 + screenMins,
         }),
       });
       if (res.ok) {
@@ -427,6 +436,44 @@ export default function ReviewPage() {
                   placeholder={t("Good weather, productive morning, family...", "מזג אוויר טוב, בוקר פרודוקטיבי, משפחה...")}
                   className="w-full bg-transparent border border-border rounded-lg p-3 text-sm resize-none h-16 focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
                 />
+              </CardContent>
+            </Card>
+
+            {/* Screen Time (Manual) */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Monitor className="h-3.5 w-3.5" /> {t("Screen Time (manual)", "זמן מסך (ידני)")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3 justify-center">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={0}
+                      max={24}
+                      value={screenHours}
+                      onChange={(e) => setScreenHours(Math.max(0, Math.min(24, parseInt(e.target.value) || 0)))}
+                      className="w-16 bg-transparent border border-border rounded-lg p-2 text-center text-lg font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <span className="text-sm text-muted-foreground">{t("hours", "שעות")}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={screenMins}
+                      onChange={(e) => setScreenMins(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                      className="w-16 bg-transparent border border-border rounded-lg p-2 text-center text-lg font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <span className="text-sm text-muted-foreground">{t("min", "דקות")}</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground text-center mt-2">
+                  {t("Check your phone's screen time in Settings", "בדוק את זמן המסך בהגדרות הטלפון")}
+                </p>
               </CardContent>
             </Card>
 

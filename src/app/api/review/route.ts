@@ -59,6 +59,11 @@ export async function POST(req: NextRequest) {
   // Auto-collect stats
   const stats = await gatherDayStats(date);
 
+  // Use manual screen time if provided, otherwise use auto-detected
+  const screenMinutes = typeof body.screenMinutes === "number" && body.screenMinutes > 0
+    ? body.screenMinutes
+    : stats.screenMinutes;
+
   const data = {
     mood: body.mood,
     energyLevel: body.energyLevel,
@@ -72,7 +77,7 @@ export async function POST(req: NextRequest) {
     tasksTotal: stats.tasksTotal,
     habitsCompleted: stats.habitsCompleted,
     habitsTotal: stats.habitsTotal,
-    screenMinutes: stats.screenMinutes,
+    screenMinutes,
   };
 
   const review = await prisma.dailyReview.upsert({
