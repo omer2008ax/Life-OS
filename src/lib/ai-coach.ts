@@ -199,8 +199,11 @@ export async function chat(userMessage: string): Promise<string> {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
     console.error("AI Coach error:", errMsg);
     if (errMsg.includes("API_KEY")) {
-      return "AI Coach is not configured. Set GEMINI_API_KEY in environment variables.";
+      return "המאמן לא מוגדר. צריך להגדיר GEMINI_API_KEY.";
     }
-    return `Coach error: ${errMsg}`;
+    if (errMsg.includes("429") || errMsg.includes("Too Many Requests") || errMsg.includes("quota")) {
+      return "⏳ יותר מדי בקשות. נסה שוב בעוד דקה.";
+    }
+    return "לא ניתן להתחבר למאמן. נסה שוב מאוחר יותר.";
   }
 }
